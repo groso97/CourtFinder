@@ -31,7 +31,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private UserRole userRole;
-    private boolean enabled;
+    private boolean confirmed;
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -41,8 +41,17 @@ public class User {
     private List<Court> courts;
 
 
+    public User(String firstName, String lastName, String email, String password, UserRole userRole) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.password = password;
+        this.userRole = userRole;
+    }
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+        this.confirmed = false;
     }
 }
