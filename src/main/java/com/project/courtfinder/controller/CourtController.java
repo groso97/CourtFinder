@@ -59,6 +59,8 @@ public class CourtController {
             return ResponseEntity.ok(new ApiResponse("Court created successfully!", courtDto));
         } catch (AlreadyExistsException e) {
             return ResponseEntity.status(CONFLICT).body(new ApiResponse(e.getMessage(), null));
+        }catch (ResourceNotFoundException e){
+            return ResponseEntity.status(NOT_FOUND).body(new ApiResponse(e.getMessage(), null));
         }
     }
 

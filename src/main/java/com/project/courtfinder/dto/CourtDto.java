@@ -12,6 +12,7 @@ import java.util.List;
 
 @Data
 public class CourtDto {
+    private Long id;
     private String name;
     private CourtType courtType;
     private String location;
