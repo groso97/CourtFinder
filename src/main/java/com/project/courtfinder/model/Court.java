@@ -1,5 +1,6 @@
 package com.project.courtfinder.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.project.courtfinder.enums.CourtType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -33,6 +34,7 @@ public class Court {
     private LocalTime availableTo;
     private LocalDateTime createdAt;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "owner_id")
     private User owner;
@@ -43,5 +45,17 @@ public class Court {
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    public Court(String name, CourtType courtType, String location, String description, BigDecimal pricePerHour, LocalTime availableFrom, LocalTime availableTo, User owner, List<Reservation> reservations) {
+        this.name = name;
+        this.courtType = courtType;
+        this.location = location;
+        this.description = description;
+        this.pricePerHour = pricePerHour;
+        this.availableFrom = availableFrom;
+        this.availableTo = availableTo;
+        this.owner = owner;
+        this.reservations = reservations;
     }
 }

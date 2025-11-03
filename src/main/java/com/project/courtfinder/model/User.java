@@ -1,5 +1,6 @@
 package com.project.courtfinder.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.project.courtfinder.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -37,6 +38,7 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Reservation> reservations;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "owner", cascade = CascadeType.REMOVE)
     private List<Court> courts;
 
