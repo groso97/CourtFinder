@@ -9,9 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Getter
 @Setter
@@ -23,9 +21,8 @@ public class Reservation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private LocalTime startTime;
-    private LocalTime endTime;
-    private LocalDate reservationDate;
+    private LocalDateTime startDateTime;
+    private LocalDateTime endDateTime;
 
     @Enumerated(EnumType.STRING)
     private ReservationStatus reservationStatus;
@@ -42,12 +39,11 @@ public class Reservation {
     @JoinColumn(name = "court_id")
     private Court court;
 
-    public Reservation(User user, Court court, LocalTime startTime, LocalTime endTime, LocalDate reservationDate, BigDecimal price, ReservationStatus reservationStatus) {
+    public Reservation(User user, Court court, LocalDateTime startDateTime, LocalDateTime endDateTime, BigDecimal price, ReservationStatus reservationStatus) {
         this.user = user;
         this.court = court;
-        this.startTime = startTime;
-        this.endTime = endTime;
-        this.reservationDate = reservationDate;
+        this.startDateTime = startDateTime;
+        this.endDateTime = endDateTime;
         this.price = price;
         this.reservationStatus = reservationStatus;
     }

@@ -2,6 +2,7 @@ package com.project.courtfinder.controller;
 
 import com.project.courtfinder.dto.ReservationDto;
 import com.project.courtfinder.exceptions.AlreadyExistsException;
+import com.project.courtfinder.exceptions.InvalidReservationTimeException;
 import com.project.courtfinder.exceptions.ResourceNotFoundException;
 import com.project.courtfinder.model.Reservation;
 import com.project.courtfinder.request.CreateReservationRequest;
@@ -40,6 +41,16 @@ public class ReservationController {
         return ResponseEntity.ok(new ApiResponse("Success", reservations));
     }
 
+    @DeleteMapping("/delete/reservation/{reservationId}")
+    public ResponseEntity<ApiResponse> deleteReservationById(@PathVariable Long reservationId){
+        try {
+            iReservationService.deleteReservationById(reservationId);
+            return ResponseEntity.ok(new ApiResponse("Reservation deleted successfully!", null));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(NOT_FOUND).body(new ApiResponse(e.getMessage(), null));
+        }
+    }
+
     @PatchMapping("/reservation/{reservationId}/cancel")
     public ResponseEntity<ApiResponse> cancelReservation(@PathVariable Long reservationId){
         try {
@@ -62,6 +73,8 @@ public class ReservationController {
             return ResponseEntity.status(CONFLICT).body(new ApiResponse(e.getMessage(), null));
         } catch (ResourceNotFoundException e){
             return ResponseEntity.status(NOT_FOUND).body(new ApiResponse(e.getMessage(), null));
+        } catch (InvalidReservationTimeException e){
+            return ResponseEntity.status(BAD_REQUEST).body(new ApiResponse(e.getMessage(), null));
         }
     }
 

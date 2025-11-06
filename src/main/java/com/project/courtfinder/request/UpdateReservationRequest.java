@@ -4,14 +4,12 @@ import com.project.courtfinder.enums.ReservationStatus;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 @Data
 public class UpdateReservationRequest {
-    private LocalTime startTime;
-    private LocalTime endTime;
-    private LocalDate reservationDate;
+    private LocalDateTime startDateTime;
+    private LocalDateTime endDateTime;
     private ReservationStatus reservationStatus;
     private BigDecimal price;
 }

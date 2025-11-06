@@ -4,9 +4,7 @@ import com.project.courtfinder.enums.ReservationStatus;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Data
 public class ReservationDto {
@@ -15,9 +13,8 @@ public class ReservationDto {
     private String userEmail;
     private Long courtId;
     private String courtName;
-    private LocalTime startTime;
-    private LocalTime endTime;
-    private LocalDate reservationDate;
+    private LocalDateTime startDateTime;
+    private LocalDateTime endDateTime;
     private ReservationStatus reservationStatus;
     private BigDecimal price;
     private LocalDateTime createdAt;

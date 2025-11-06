@@ -3,6 +3,7 @@ package com.project.courtfinder.services.reservation;
 import com.project.courtfinder.dto.ReservationDto;
 import com.project.courtfinder.enums.ReservationStatus;
 import com.project.courtfinder.exceptions.AlreadyExistsException;
+import com.project.courtfinder.exceptions.InvalidReservationTimeException;
 import com.project.courtfinder.exceptions.ResourceNotFoundException;
 import com.project.courtfinder.model.Court;
 import com.project.courtfinder.model.Reservation;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -34,49 +36,75 @@ public class ReservationService implements IReservationService {
     @Override
     public Reservation createReservation(CreateReservationRequest request) {
         User user = userRepository.findById(request.getUserId())
-                .orElseThrow(()-> new ResourceNotFoundException("User with id " + request.getUserId() + " not found!"));
+                .orElseThrow(() -> new ResourceNotFoundException("User with id " + request.getUserId() + " not found!"));
         Court court = courtRepository.findById(request.getCourtId())
-                .orElseThrow(()-> new ResourceNotFoundException("Court with id " + request.getCourtId() + " not found!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Court with id " + request.getCourtId() + " not found!"));
 
-        boolean courtTaken = reservationRepository.existsByCourtAndTimeRange(
-                court.getId(), request.getReservationDate(), request.getStartTime(), request.getEndTime()
-        );
+        LocalDateTime start = request.getStartDateTime();
+        LocalDateTime end = request.getEndDateTime();
 
-        if(courtTaken){
-            throw new AlreadyExistsException("Court with id: " + court.getId() + " is already reserved at that time!");
+        if (start.getMinute() != 0 || end.getMinute() != 0) {
+            throw new InvalidReservationTimeException("Reservations must start and end on the hour (full hours only).");
         }
 
-        boolean userBusy = reservationRepository.existsByUserAndTimeRange(
-                user.getId(), request.getReservationDate(), request.getStartTime(), request.getEndTime()
-        );
-
-        if(userBusy){
-            throw new AlreadyExistsException("User with id: " + user.getId() + " already has a reservation at that time!");
+        if (!end.isAfter(start)) {
+            throw new InvalidReservationTimeException("End time must be after start time.");
         }
 
-        if(request.getStartTime().isBefore(court.getAvailableFrom())
-        || request.getEndTime().isAfter(court.getAvailableTo())){
-            throw new AlreadyExistsException("Time is outside of court working hours!");
+        long hours = Duration.between(start, end).toHours();
+        if (hours < 1) throw new InvalidReservationTimeException("Minimum reservation duration is 1 hour.");
+        if (hours > 2) throw new InvalidReservationTimeException("Maximum reservation duration is 2 hours.");
+
+        LocalTime courtFrom = court.getAvailableFrom();
+        LocalTime courtTo = court.getAvailableTo();
+
+        LocalDateTime courtOpen = LocalDateTime.of(start.toLocalDate(), courtFrom);
+        LocalDateTime courtClose = courtTo.equals(LocalTime.MIDNIGHT)
+                ? LocalDateTime.of(start.toLocalDate().plusDays(1), LocalTime.MIDNIGHT)
+                : LocalDateTime.of(start.toLocalDate(), courtTo);
+
+        if (start.isBefore(courtOpen)) {
+            throw new InvalidReservationTimeException("Reservation cannot start before court opens!");
         }
 
-        long hours = Duration.between(request.getStartTime(), request.getEndTime()).toHours();
-        if (hours <= 0) {
-            hours += 24;
+        if (end.isAfter(courtClose)) {
+            throw new InvalidReservationTimeException("Reservation cannot end after court closing time!");
         }
+
+        List<Reservation> courtConflicts = reservationRepository.findAllByCourtAndReservationStatusIn(
+                        court, List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED))
+                .stream()
+                .filter(r -> start.isBefore(r.getEndDateTime()) && end.isAfter(r.getStartDateTime()))
+                .toList();
+
+        if (!courtConflicts.isEmpty()) {
+            throw new AlreadyExistsException("Court is already reserved at that time!");
+        }
+
+        List<Reservation> userConflicts = reservationRepository.findAllByUserAndReservationStatusIn(
+                        user, List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED))
+                .stream()
+                .filter(r -> start.isBefore(r.getEndDateTime()) && end.isAfter(r.getStartDateTime()))
+                .toList();
+
+        if (!userConflicts.isEmpty()) {
+            throw new AlreadyExistsException("You already have a reservation at that time!");
+        }
+
         BigDecimal price = court.getPricePerHour().multiply(BigDecimal.valueOf(hours));
 
-       Reservation reservation = new Reservation(
-               user,
-               court,
-               request.getStartTime(),
-               request.getEndTime(),
-               request.getReservationDate(),
-               price,
-               ReservationStatus.PENDING
-       );
-
-       return reservationRepository.save(reservation);
+        Reservation reservation = new Reservation(
+                user,
+                court,
+                start,
+                end,
+                price,
+                ReservationStatus.PENDING
+        );
+        return reservationRepository.save(reservation);
     }
+
+
 
     @Override
     public Reservation getReservationById(Long id) {
@@ -91,15 +119,14 @@ public class ReservationService implements IReservationService {
 
     @Override
     public Reservation updateReservation(UpdateReservationRequest updateReservationRequest, Long reservationId) {
-        Reservation updatedReservation = reservationRepository.findById(reservationId)
+        Reservation existing = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reservation with id " + reservationId + " not found!"));
 
-        updatedReservation.setStartTime(updateReservationRequest.getStartTime());
-        updatedReservation.setEndTime(updateReservationRequest.getEndTime());
-        updatedReservation.setReservationDate(updateReservationRequest.getReservationDate());
-        updatedReservation.setReservationStatus(updateReservationRequest.getReservationStatus());
-        updatedReservation.setPrice(updateReservationRequest.getPrice());
-        return reservationRepository.save(updatedReservation);
+        existing.setStartDateTime(updateReservationRequest.getStartDateTime());
+        existing.setEndDateTime(updateReservationRequest.getEndDateTime());
+        existing.setReservationStatus(updateReservationRequest.getReservationStatus());
+        existing.setPrice(updateReservationRequest.getPrice());
+        return reservationRepository.save(existing);
     }
 
     @Override
@@ -112,11 +139,18 @@ public class ReservationService implements IReservationService {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(()-> new ResourceNotFoundException("Reservation with id " + reservationId + " not found!"));
 
-        LocalDateTime reservationDateTime = LocalDateTime.of(reservation.getReservationDate(), reservation.getStartTime());
-        if (Duration.between(LocalDateTime.now(), reservationDateTime).toHours() < 8) {
+        if (Duration.between(LocalDateTime.now(), reservation.getStartDateTime()).toHours() < 8) {
             throw new IllegalStateException("Reservation can only be cancelled at least 8 hours before start time!");
         }
         reservation.setReservationStatus(ReservationStatus.CANCELLED);
         return reservationRepository.save(reservation);
+    }
+
+    @Override
+    public void deleteReservationById(Long reservationId) {
+        reservationRepository.findById(reservationId)
+                .ifPresentOrElse(reservationRepository::delete,
+                        ()-> {throw new ResourceNotFoundException("Reservation with id " + reservationId + " not found!");
+                        });
     }
 }

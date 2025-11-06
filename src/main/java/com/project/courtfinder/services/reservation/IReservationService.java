@@ -14,4 +14,5 @@ public interface IReservationService {
     Reservation updateReservation(UpdateReservationRequest updateReservationRequest, Long courtId);
     ReservationDto convertReservationToDto(Reservation reservation);
     Reservation cancelReservation(Long reservationId);
+    void deleteReservationById(Long reservationId);
 }
